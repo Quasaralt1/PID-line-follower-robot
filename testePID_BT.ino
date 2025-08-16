@@ -205,6 +205,8 @@ void setup() {
 //***************************************************************************************************************************************************
 void loop() {
     BTread();
+    Serial.print("KP: ")
+    Serial.println(Kp)
   if (calibrate == true) {
     calibration();
   } else if (activate_PID == true) {
