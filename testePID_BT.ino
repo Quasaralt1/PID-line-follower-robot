@@ -78,7 +78,7 @@ void BTread(){
         //PID valores 
     if (data.startsWith("KP:")) kp = data.substring(3).toInt();
     else if (data.startsWith("KI:")) ki = data.substring(3).toInt();
-    else if (data.startsWith("KD:")) ki = data.substring(3).toInt();
+    else if (data.startsWith("KD:")) kd = data.substring(3).toInt();
 
     // valores de multiplicacao do PID
     else if (data.startsWith("MP:")) multiP = data.substring(3).toInt();
