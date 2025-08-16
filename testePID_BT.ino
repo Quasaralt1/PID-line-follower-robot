@@ -54,14 +54,14 @@ float Ivalue;
 float Dvalue;
 
 //variaveis de velocidade base,minima e maxima
-#define maxspeed 125
-#define minspeed -125
+int maxspeed = 125;
+int minspeed = -125;
 
 int leftspeed;
 int rightspeed;
 
-#define minbasespeed 60  // velocidade base mínima
-#define maxbasespeed 75  // velocidade base máxima
+int minbasespeed = 60;  // velocidade base mínima
+int maxbasespeed = 75;  // velocidade base máxima
 
 #define Bcalibrate 34
 #define Bstart 35
@@ -75,7 +75,25 @@ void BTread(){
         string data = SerialBT.read(StringUntil("\n"));
         data.trim();
 
-    if (data.startWith("KP"))
+        //PID valores 
+    if (data.startWith("KP:")) kp = data.substring(3).toInt();
+    else if (data.startwith("KI:")) ki = data.substring(3).toInt();
+    else if (data.startwith("KD:")) ki = data.substring(3).toInt();
+
+    // valores de multiplicacao do PID
+    else if (data.startwith("MP:")) multiP = data.substring(3).toInt();
+    else if (data.startwith("MI:")) multiI = data.substring(3).toInt();
+    else if (data.startwith("MD:")) multiD = data.substring(3).toInt();
+
+    //velocidade
+    else if (data.startwith("Min:")) minspeed = data.substring(4).toInt();
+    else if (data.startwith("Max:")) maxspeed = data.substring(4).toInt();
+
+    //velocidade base
+
+    else if (data.startwith("MinB:")) minbasespeed = data.substring(5).toInt();
+    else if (data.startWith("MaxB:")) maxbasespeed = data.substring(5).toInt();
+
     })
 }
 //***************************************************************************************************************************************************
@@ -186,6 +204,7 @@ void setup() {
 
 //***************************************************************************************************************************************************
 void loop() {
+    BTread();
   if (calibrate == true) {
     calibration();
   } else if (activate_PID == true) {
