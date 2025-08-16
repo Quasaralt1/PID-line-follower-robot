@@ -71,30 +71,30 @@ bool activate_PID = false;
 bool calibrate = false;
 //***************************************************************************************************************************************************
 void BTread(){
-    if(ESP32.available(){
-        string data = SerialBT.read(StringUntil("\n"));
+    if(ESP32.available()){
+         String data = ESP32.readStringUntil('\n');
         data.trim();
 
         //PID valores 
-    if (data.startWith("KP:")) kp = data.substring(3).toInt();
-    else if (data.startwith("KI:")) ki = data.substring(3).toInt();
-    else if (data.startwith("KD:")) ki = data.substring(3).toInt();
+    if (data.startsWith("KP:")) kp = data.substring(3).toInt();
+    else if (data.startsWith("KI:")) ki = data.substring(3).toInt();
+    else if (data.startsWith("KD:")) ki = data.substring(3).toInt();
 
     // valores de multiplicacao do PID
-    else if (data.startwith("MP:")) multiP = data.substring(3).toInt();
-    else if (data.startwith("MI:")) multiI = data.substring(3).toInt();
-    else if (data.startwith("MD:")) multiD = data.substring(3).toInt();
+    else if (data.startsWith("MP:")) multiP = data.substring(3).toInt();
+    else if (data.startsWith("MI:")) multiI = data.substring(3).toInt();
+    else if (data.startsWith("MD:")) multiD = data.substring(3).toInt();
 
     //velocidade
-    else if (data.startwith("Min:")) minspeed = data.substring(4).toInt();
-    else if (data.startwith("Max:")) maxspeed = data.substring(4).toInt();
+    else if (data.startsWith("Min:")) minspeed = data.substring(4).toInt();
+    else if (data.startsWith("Max:")) maxspeed = data.substring(4).toInt();
 
     //velocidade base
 
-    else if (data.startwith("MinB:")) minbasespeed = data.substring(5).toInt();
-    else if (data.startWith("MaxB:")) maxbasespeed = data.substring(5).toInt();
+    else if (data.startsWith("MinB:")) minbasespeed = data.substring(5).toInt();
+    else if (data.startsWith("MaxB:")) maxbasespeed = data.substring(5).toInt();
 
-    })
+    }
 }
 //***************************************************************************************************************************************************
 void calibration() {
@@ -186,14 +186,14 @@ void setup() {
   qtr.setSensorPins((const uint8_t[]){ 4, 5, 15, 18, 19, 27, 32, 33 }, sensores);
   Serial.begin(115200);
     ESP32.begin(esp);
-  while (calibration == false) {
+  while (calibrate == false) {
     if (digitalRead(Bcalibrate) == HIGH) {
       calibrate = true;
     }
     stop();
     delay(50);
   }
-  while (Ccalibrate == true && active_PID == false) {
+  while (Ccalibrate == true && activate_PID == false) {
     if (digitalRead(Bstart) == HIGH) {
       activate_PID = true;
     }
@@ -205,8 +205,8 @@ void setup() {
 //***************************************************************************************************************************************************
 void loop() {
     BTread();
-    Serial.print("KP: ")
-    Serial.println(Kp)
+    Serial.print("KP: ");
+    Serial.println(kp);
   if (calibrate == true) {
     calibration();
   } else if (activate_PID == true) {
