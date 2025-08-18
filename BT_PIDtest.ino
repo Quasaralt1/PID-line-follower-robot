@@ -1,13 +1,8 @@
 #include <BluetoothSerial.h>
 
-String esp = "ESP_TEST";
 
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
-#endif
- 
-#if !defined(CONFIG_BT_SPP_ENABLED)
-#error Serial Port Profile for Bluetooth is not available or not enabled. It is only available for the ESP32 chip.
 #endif
 
 BluetoothSerial ESP32;
@@ -70,12 +65,12 @@ bool Ccalibrate = false;
 bool activate_PID = false;
 bool calibrate = false;
 //***************************************************************************************************************************************************
-void BTread(){
-    if(ESP32.available()){
-         String data = ESP32.readStringUntil('\n');
-        data.trim();
+void BTread() {
+  if (ESP32.available()) {
+    String data = ESP32.readStringUntil('\n');
+    data.trim();
 
-        //PID valores 
+    //PID valores
     if (data.startsWith("KP:")) kp = data.substring(3).toInt();
     else if (data.startsWith("KI:")) ki = data.substring(3).toInt();
     else if (data.startsWith("KD:")) kd = data.substring(3).toInt();
@@ -94,7 +89,11 @@ void BTread(){
     else if (data.startsWith("MinB:")) minbasespeed = data.substring(5).toInt();
     else if (data.startsWith("MaxB:")) maxbasespeed = data.substring(5).toInt();
 
-    }
+
+    else if (data.startsWith("Ca:")) calibrate = !calibrate;
+    else if (data.startsWith("Sa:")) activate_PID = data.substring(3).toInt();
+    else if (data.startsWith("So:")) activate_PID = data.substring(3).toInt();
+  }
 }
 //***************************************************************************************************************************************************
 void calibration() {
@@ -104,6 +103,7 @@ void calibration() {
   calibrate = false;
   Ccalibrate = true;
 }
+//***************************************************************************************************************************************************
 void leftmotor(int speed) {
   if (speed < 0) {
     ledcWrite(motorE1, -speed);
@@ -171,6 +171,30 @@ void PID() {
   leftmotor(leftspeed);
   rightmotor(rightspeed);
 }
+//***************************************************************************************************************************************************
+void BTmonitor() {
+  Serial.print("KP: ");
+  Serial.print(kp);
+  Serial.print(" KI:");
+  Serial.print(ki);
+  Serial.print(" KD: ");
+  Serial.print(kd);
+  Serial.print(" Multi P: ");
+  Serial.print(multiP);
+  Serial.print(" Multi D: ");
+  Serial.print(multiI);
+  Serial.print(" Multi D: ");
+  Serial.print(multiD);
+  Serial.print(" min speed: ");
+  Serial.print(minspeed);
+  Serial.print(" max speed: ");
+  Serial.print(maxspeed);
+  Serial.print(" min base speed: ");
+  Serial.print(minbasespeed);
+  Serial.print(" maxbasespeed: ");
+  Serial.print(maxbasespeed);
+  Serial.println();
+}
 
 //***************************************************************************************************************************************************
 void setup() {
@@ -185,17 +209,21 @@ void setup() {
   qtr.setTypeRC();
   qtr.setSensorPins((const uint8_t[]){ 4, 5, 15, 18, 19, 27, 32, 33 }, sensores);
   Serial.begin(115200);
-    ESP32.begin(esp);
+  if (!ESP32.begin("ESP_TEST")) {
+    Serial.println("Erro ao iniciar Bluetooth!");
+  } else {
+    Serial.println("Bluetooth iniciado com nome: ESP_TEST");
+  }
   while (calibrate == false) {
     if (digitalRead(Bcalibrate) == HIGH) {
-      calibrate = true;
+      calibrate = !calibrate;
     }
     stop();
     delay(50);
   }
   while (Ccalibrate == true && activate_PID == false) {
     if (digitalRead(Bstart) == HIGH) {
-      activate_PID = true;
+      activate_PID = !activate_PID;
     }
     stop();
     delay(50);  //stop the motors
@@ -204,12 +232,10 @@ void setup() {
 
 //***************************************************************************************************************************************************
 void loop() {
-    BTread();
-    Serial.print("KP: ");
-    Serial.println(kp);
+  BTread();
   if (calibrate == true) {
     calibration();
-  } else if (activate_PID == true) {
+  } else if (activate_PID == true && calibrate == false && Ccalibrate == true) {
     PID();
   } else {
     stop();
