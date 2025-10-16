@@ -37,23 +37,18 @@ uint8_t multiI = 1;
 uint8_t multiD = 1;
 
 //variaveis de calculo de erro e PID
-int erro;
-int erroAnterior;
-int P;
-int I;
-int D;
+int erro, erroAnterior;
+int P, I, D;
 
 //variaveis usadas na multiplicacao dos valores
-float Pvalue;
-float Ivalue;
-float Dvalue;
+float Pvalue, Ivalue, Dvalue;
 
 //variaveis de velocidade base,minima e maxima
 int maxspeed = 125;
 int minspeed = -125;
 
-int leftspeed;
-int rightspeed;
+//variavel de velocidade esquerda e direita
+int leftspeed, rightspeed;
 
 int minbasespeed = 60;  // velocidade base mínima
 int maxbasespeed = 75;  // velocidade base máxima
@@ -105,29 +100,23 @@ void calibration() {
 }
 //***************************************************************************************************************************************************
 void leftmotor(int speed) {
-  if (speed < 0) {
-    ledcWrite(motorE1, -speed);
-    ledcWrite(motorE2, 0);
-  } else {
-    ledcWrite(motorE1, 0);
-    ledcWrite(motorE2, speed);
-  }
+  //verificacao de sentido do motor com base na velocidade
+  speed < 0 ? analogWrite(motorE1, -speed), analogWrite(MotorE2, 0 ) : analogWrite(motorE1, 0), analogWrite(motorE2, speed);
 }
 void rightmotor(int speed) {
-  if (speed < 0) {
-    ledcWrite(motorD1, -speed);
-    ledcWrite(motorD2, 0);
-  } else {
-    ledcWrite(motorD1, 0);
-    ledcWrite(motorD2, speed);
+    speed < 0 ? analogWrite(motorD1, -speed), analogWrite(motorD2, 0) : analogWrite(motorD1, 0), analogWrite(motorD2, speed);
   }
 }
 //***************************************************************************************************************************************************
 void stop() {
-  ledcWrite(motorE1, 0);
-  ledcWrite(motorE2, 0);
-  ledcWrite(motorD1, 0);
-  ledcWrite(motorD2, 0);
+
+  //motor esquerdo
+  analogWrite(motorE1, 0);
+  analogWrite(motorE2, 0);
+
+  //motor direito
+  analogWrite(motorD1, 0);
+  analogWrite(motorD2, 0);
 }
 //***************************************************************************************************************************************************
 void PID() {
@@ -157,8 +146,8 @@ void PID() {
 
   // Ajuste dinâmico da velocidade base com base no erro
   float errorMagnitude = abs(erro);
-  float maxerror = 3500.0;                                 // erro máximo esperado (valor da borda)
-  float speedscaling = 1.0 - (errorMagnitude / maxerror);  // quanto mais erro, menor velocidade
+  float maxerror = 3500.0;   // erro máximo esperado
+  float speedscaling = 1.0 - (errorMagnitude / maxerror);  // quanto maior o erro, menor a velocidade
   int basespeed = minbasespeed + speedscaling * (maxbasespeed - minbasespeed);
   leftspeed = basespeed + correction;
   rightspeed = basespeed - correction;
@@ -200,11 +189,12 @@ void BTmonitor() {
 void setup() {
   pinMode(Bcalibrate, INPUT);
   pinMode(Bstart, INPUT);
+  
   //definindo pino do motor
-  ledcAttach(motorE1, frequency, resolution);
-  ledcAttach(motorE2, frequency, resolution);
-  ledcAttach(motorD1, frequency, resolution);
-  ledcAttach(motorD2, frequency, resolution);
+  pinMode(motorE1, OUTPUT);
+  pinMode(motorE2, OUTPUT);
+  pinMode(motorD1, OUTPUT);
+  pinMode(motorD2, OUTPUT);
 
   qtr.setTypeRC();
   qtr.setSensorPins((const uint8_t[]){ 4, 5, 15, 18, 19, 27, 32, 33 }, sensores);
