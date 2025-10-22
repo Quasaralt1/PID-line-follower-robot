@@ -1,9 +1,11 @@
 #include <BluetoothSerial.h>
+#include <Arduino.h>
 
 
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
+
 
 BluetoothSerial ESP32;
 
@@ -12,16 +14,14 @@ QTRSensors qtr;
 
 //variaveis de quantidade e de leitura dos sensores
 const uint8_t sensores = 8;
-uint16_t leituras[sensores];
+uint16_t sensorValues[sensores];
 
 //***************************************************************************************************************************************************
-#define resolution 8
-#define frequency 5000
 //variavel de motor
-#define motorE1 17
-#define motorE2 23
-#define motorD1 13
-#define motorD2 16
+#define motorE1 33
+#define motorE2 25
+#define motorD1 36
+#define motorD2 27
 
 //variaveis do PID
 //ganhos proporcionais,integrais e derivados
@@ -29,12 +29,14 @@ float kp = 0.08;
 float ki = 0;
 float kd = 0.08;
 
-
+String sensor[] = {"E1: ", "E2: ", "E3: ", "E4: ", "D4: ","D2: ","D3: ","D4: ","Position: ", "Erro: "};
 
 //valores de multiplicacao do pid
 uint8_t multiP = 1;
 uint8_t multiI = 1;
 uint8_t multiD = 1;
+
+uint16_t position;
 
 //variaveis de calculo de erro e PID
 int erro, erroAnterior;
@@ -49,16 +51,17 @@ int minspeed = -125;
 
 //variavel de velocidade esquerda e direita
 int leftspeed, rightspeed;
-
-int minbasespeed = 60;  // velocidade base mínima
+int basespeed = 0;
+/*
+int minbasespeed = 60;  // velocidade base mínima */
 int maxbasespeed = 75;  // velocidade base máxima
 
+bool calibrate = false;
+bool activate_PID = false;
+bool Ccalibrate = false;
 #define Bcalibrate 34
 #define Bstart 35
 
-bool Ccalibrate = false;
-bool activate_PID = false;
-bool calibrate = false;
 //***************************************************************************************************************************************************
 void BTread() {
   if (ESP32.available()) {
@@ -81,7 +84,7 @@ void BTread() {
 
     //velocidade base
 
-    else if (data.startsWith("MinB:")) minbasespeed = data.substring(5).toInt();
+    else if (data.startsWith("MinB:")) basespeed = data.substring(5).toInt();//minbasespeed = data.substring(5).toInt();
     else if (data.startsWith("MaxB:")) maxbasespeed = data.substring(5).toInt();
 
 
@@ -101,12 +104,12 @@ void calibration() {
 //***************************************************************************************************************************************************
 void leftmotor(int speed) {
   //verificacao de sentido do motor com base na velocidade
-  speed < 0 ? analogWrite(motorE1, -speed), analogWrite(MotorE2, 0 ) : analogWrite(motorE1, 0), analogWrite(motorE2, speed);
+  speed < 0 ? analogWrite(motorE1, -speed), analogWrite(motorE2, 0) : analogWrite(motorE1, 0), analogWrite(motorE2, speed);
 }
 void rightmotor(int speed) {
-    speed < 0 ? analogWrite(motorD1, -speed), analogWrite(motorD2, 0) : analogWrite(motorD1, 0), analogWrite(motorD2, speed);
-  }
+  speed < 0 ? analogWrite(motorD1, -speed), analogWrite(motorD2, 0) : analogWrite(motorD1, 0), analogWrite(motorD2, speed);
 }
+
 //***************************************************************************************************************************************************
 void stop() {
 
@@ -120,15 +123,15 @@ void stop() {
 }
 //***************************************************************************************************************************************************
 void PID() {
-
+  
   //calculo da posicao do robo com isso definindo o erro
-  uint16_t position = qtr.readLineBlack(leituras);
+  position = qtr.readLineBlack(sensorValues);
   erro = 3500 - position;
-
+  
   //calculo do PID
-  P = erro;
-  I += erro;
-  D = erro - erroAnterior;
+  int P = erro;
+  int I = I + erro;
+  int D = erro - erroAnterior;
 
   //erro vira o erro anterior
   erroAnterior = erro;
@@ -139,21 +142,12 @@ void PID() {
   Dvalue = (kd / pow(10, multiD)) * D;
 
   //calculo da velocidade dos motor
-  float correction = Pvalue + Ivalue + Dvalue;
+  float motorspeed = Pvalue + Ivalue + Dvalue;
+
   //separando a velocidade esquerda e direita
-  // Cálculo da velocidade base variável
-
-
-  // Ajuste dinâmico da velocidade base com base no erro
-  float errorMagnitude = abs(erro);
-  float maxerror = 3500.0;   // erro máximo esperado
-  float speedscaling = 1.0 - (errorMagnitude / maxerror);  // quanto maior o erro, menor a velocidade
-  int basespeed = minbasespeed + speedscaling * (maxbasespeed - minbasespeed);
-  leftspeed = basespeed + correction;
-  rightspeed = basespeed - correction;
-
-  // Limitando as velocidades
-  //limitando o minimo e maximo da velocidade
+  int leftspeed = basespeed + motorspeed;
+  int rightspeed = basespeed - motorspeed;/*
+ 
   leftspeed = constrain(leftspeed, minspeed, maxspeed);
   rightspeed = constrain(rightspeed, minspeed, maxspeed);
 
@@ -178,53 +172,63 @@ void BTmonitor() {
   Serial.print(minspeed);
   Serial.print(" max speed: ");
   Serial.print(maxspeed);
-  Serial.print(" min base speed: ");
-  Serial.print(minbasespeed);
-  Serial.print(" maxbasespeed: ");
-  Serial.print(maxbasespeed);
+  Serial.print(" basespeed: ");
+  Serial.print(basespeed);
   Serial.println();
+}
+
+void Sread(){
+  for (uint8_t i = 0; i < sensores; i++)
+  {
+    Serial.print(sensor[i]);
+    Serial.print(": ");
+    Serial.print(sensorValues[i]);
+    Serial.print(" ");
+  }
+  Serial.print("position: ");
+  Serial.println(position);
+
+
 }
 
 //***************************************************************************************************************************************************
 void setup() {
+  analogReadResolution(10);
   pinMode(Bcalibrate, INPUT);
   pinMode(Bstart, INPUT);
-  
+
   //definindo pino do motor
   pinMode(motorE1, OUTPUT);
   pinMode(motorE2, OUTPUT);
   pinMode(motorD1, OUTPUT);
   pinMode(motorD2, OUTPUT);
 
+  pinMode(LED_BUILTIN, OUTPUT);
+
   qtr.setTypeRC();
-  qtr.setSensorPins((const uint8_t[]){ 4, 5, 15, 18, 19, 27, 32, 33 }, sensores);
+  qtr.setSensorPins((const uint8_t[]){ 21, 16, 15, 17, 18, 19, 23, 14 }, sensores);
   Serial.begin(115200);
-  if (!ESP32.begin("ESP_TEST")) {
-    Serial.println("Erro ao iniciar Bluetooth!");
-  } else {
-    Serial.println("Bluetooth iniciado com nome: ESP_TEST");
-  }
-  while (calibrate == false) {
-    if (digitalRead(Bcalibrate) == HIGH) {
-      calibrate = !calibrate;
-    }
-    stop();
-    delay(50);
-  }
-  while (Ccalibrate == true && activate_PID == false) {
-    if (digitalRead(Bstart) == HIGH) {
-      activate_PID = !activate_PID;
-    }
-    stop();
-    delay(50);  //stop the motors
-  }
+  !ESP32.begin("ESP_TEST") ? Serial.println("Erro ao iniciar Bluetooth!") : Serial.println("Bluetooth iniciado com nome: ESP_TEST");
+  stop();
+  delay(50);
 }
+
 
 //***************************************************************************************************************************************************
 void loop() {
+  //BTmonitor();
+  //Sread();
+  //Serial.println();
   BTread();
   if (calibrate == true) {
+    activate_PID = false;
+    delay(100);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(100);
     calibration();
+    delay(100);
+    digitalWrite(LED_BUILTIN, LOW);
+    calibrate = false;
   } else if (activate_PID == true && calibrate == false && Ccalibrate == true) {
     PID();
   } else {
