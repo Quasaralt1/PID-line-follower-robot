@@ -147,7 +147,35 @@ void PID() {
   //separando a velocidade esquerda e direita
   int leftspeed = basespeed + motorspeed;
   int rightspeed = basespeed - motorspeed;/*
- 
+  //calculo do PID
+  P = erro;
+  I += erro;
+  D = erro - erroAnterior;
+
+  //erro vira o erro anterior
+  erroAnterior = erro;
+
+  //calculo do PID
+  Pvalue = (kp / pow(10, multiP)) * P;
+  Ivalue = (ki / pow(10, multiI)) * I;
+  Dvalue = (kd / pow(10, multiD)) * D;
+
+  //calculo da velocidade dos motor
+  float correction = Pvalue + Ivalue + Dvalue;
+  //separando a velocidade esquerda e direita
+  // Cálculo da velocidade base variável
+
+
+  // Ajuste dinâmico da velocidade base com base no erro
+  float errorMagnitude = abs(erro);
+  float maxerror = 3500.0;                                 // erro máximo esperado
+  float speedscaling = 1.0 - (errorMagnitude / maxerror);  // quanto maior o erro, menor a velocidade
+  int basespeed = minbasespeed + speedscaling * (maxbasespeed - minbasespeed);
+  leftspeed = basespeed + correction;
+  rightspeed = basespeed - correction;
+  */
+  // Limitando as velocidades
+  //limitando o minimo e maximo da velocidade
   leftspeed = constrain(leftspeed, minspeed, maxspeed);
   rightspeed = constrain(rightspeed, minspeed, maxspeed);
 
@@ -172,6 +200,10 @@ void BTmonitor() {
   Serial.print(minspeed);
   Serial.print(" max speed: ");
   Serial.print(maxspeed);
+  //Serial.print(" min base speed: ");
+  //Serial.print(minbasespeed);
+  //Serial.print(" maxbasespeed: ");
+  //Serial.print(maxbasespeed);
   Serial.print(" basespeed: ");
   Serial.print(basespeed);
   Serial.println();
